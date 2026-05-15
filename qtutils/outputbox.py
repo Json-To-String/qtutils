@@ -127,6 +127,8 @@ class OutputBox(object):
         self.output_textedit.setWordWrapMode(QTextOption.WrapAnywhere)
         set_auto_scroll_to_end(self.output_textedit.verticalScrollBar())
         self.output_textedit.setMaximumBlockCount(scrollback_lines)
+        self.output_textedit.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.output_textedit.customContextMenuRequested.connect(self._show_context_menu)
 
         if zmq_context is None:
             zmq_context = zmq.Context.instance()
@@ -224,6 +226,26 @@ class OutputBox(object):
             color = WHITE
             bold = False
         self.write(text, color=color, bold=bold)
+
+    def _show_context_menu(self, pos):
+        menu = self.output_textedit.createStandardContextMenu()
+        menu.addSeparator()
+        clear_action = menu.addAction('Clear Output')
+        chosen = menu.exec(self.output_textedit.mapToGlobal(pos))
+        if chosen is clear_action:
+            self.clear_output()
+
+    @inmain_decorator(False)
+    def clear_output(self):
+        """Clear all text currently displayed in the output box by flushing 
+        queue and reset line-position."""
+        while True:
+            try:
+                self._text_queue.get_nowait()
+            except queue.Empty:
+                break
+        self.output_textedit.clear()
+        self.linepos = self.LINE_NEW
 
     def mainloop(self, socket):
         while True:
@@ -346,7 +368,7 @@ class OutputBox(object):
         return False
 
     def flush(self):
-        pass
+        self.clear_output()
 
 
 if __name__ == '__main__':
