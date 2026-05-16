@@ -129,7 +129,10 @@ class OutputBox(object):
         self.output_textedit.setMaximumBlockCount(scrollback_lines)
         self.output_textedit.setContextMenuPolicy(Qt.CustomContextMenu)
         self.output_textedit.customContextMenuRequested.connect(self._show_context_menu)
-
+        
+        self.shortcut = QShortcut(QKeySequence("Return"), self.output_textedit)
+        self.shortcut.activated.connect(self.add_whitespace)
+        
         if zmq_context is None:
             zmq_context = zmq.Context.instance()
         self.zmq_context = zmq_context
@@ -344,6 +347,13 @@ class OutputBox(object):
             cursor.movePosition(QTextCursor.PreviousCharacter, n=charsprinted)
             cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
             cursor.setCharFormat(charformats(charformat_repr))
+            
+    def add_whitespace(self):
+        """Blackspace actually? Jumps to end of the outputbox and adds an empty line."""
+        
+        self.output_textedit.moveCursor(QTextCursor.End)
+        self._text_queue.put(("\n", "default"))
+        self.add_text() 
         
     def shutdown(self):
         """Stop the mainloop. Further writing to the OutputBox will be ignored. It is
