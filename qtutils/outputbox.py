@@ -133,6 +133,9 @@ class OutputBox(object):
         self.shortcut = QShortcut(QKeySequence("Return"), self.output_textedit)
         self.shortcut.activated.connect(self.add_whitespace)
         
+        self.shortcut = QShortcut(QKeySequence("CTRL+L"), self.output_textedit)
+        self.shortcut.activated.connect(self.jump_to_end)
+        
         if zmq_context is None:
             zmq_context = zmq.Context.instance()
         self.zmq_context = zmq_context
@@ -354,6 +357,22 @@ class OutputBox(object):
         self.output_textedit.moveCursor(QTextCursor.End)
         self._text_queue.put(("\n", "default"))
         self.add_text() 
+        
+    def jump_to_end(self):
+        """Jumps to the end of outputbox and sets the last line as the top"""
+        
+        # Stores the last block
+        lastBlock = self.output_textedit.document().lastBlock()
+        lastLineText = lastBlock.text()
+        
+        # Clears
+        self.output_textedit.clear()
+
+        # Then tosses that block back to outputbox
+        self._text_queue.put((lastLineText, "default"))
+        self.add_text()
+
+        self.output_textedit.moveCursor(QTextCursor.End)
         
     def shutdown(self):
         """Stop the mainloop. Further writing to the OutputBox will be ignored. It is
