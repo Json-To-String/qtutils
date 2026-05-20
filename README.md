@@ -4,9 +4,9 @@
 ![GitHub release](https://img.shields.io/github/last-commit/philipstarkey/qtutils.svg)
 [![Python Version](https://img.shields.io/pypi/pyversions/qtutils.svg)](https://python.org)
 [![Documentation Status](https://readthedocs.org/projects/qtutils/badge/?version=stable)](https://qtutils.readthedocs.io/en/stable/?badge=stable)
-[![PyPi Version](https://img.shields.io/pypi/v/qtutils.svg)](https://pypi.python.org/pypi/qtutils/) 
+[![PyPi Version](https://img.shields.io/pypi/v/qtutils.svg)](https://pypi.python.org/pypi/qtutils/)
 [![Conda Version](https://img.shields.io/conda/v/labscript-suite/qtutils)](https://anaconda.org/labscript-suite/qtutils)
-[![PyPi License](https://img.shields.io/pypi/l/qtutils.svg)](https://github.com/philipstarkey/qtutils/blob/master/LICENSE.txt) 
+[![PyPi License](https://img.shields.io/pypi/l/qtutils.svg)](https://github.com/philipstarkey/qtutils/blob/master/LICENSE.txt)
 
 Utilities for providing concurrent access to Qt objects, simplified QSettings storage,
 and dynamic widget promotion when loading UI files, in Python Qt applications. Includes
@@ -30,7 +30,7 @@ license](https://ubuntu.com/legal/font-licence)).
 ## Summary
 
 `qtutils` is a Python library that provides some convenient features to Python
-applications using the PyQt5/PySide6 widget library.
+applications using the PyQt5/PyQt6/PySide6 widget library.
 
 `qtutils` 4.0 dropped support for PySide2. If you need to use PySide2, you may use
 `qtutils` 3.1.0 or earlier.
@@ -53,12 +53,19 @@ applications using the PyQt5/PySide6 widget library.
   If you can't or don't want to provide attribution, please purchase a royalty-free
   license from http://p.yusukekamiyamane.com/
 
-* `Qt`: a PyQt5/PySide6 agnostic interface to Qt that allows you to import qtutils.qt
-  instead of PySide6 or PyQt5, and have your code run on both, with some convenience
-  aliases to make it easier to write code that works with both libraries. Note that this
-  is not a comprehensive abstraction layer like [QtPy](https://pypi.org/project/QtPy/)
-  and your code will still need to be written in a way generally compatible with both
-  libraries if you want to support both.
+* `qt`: a PyQt5/PyQt6/PySide6 agnostic interface to Qt that allows you to do e.g `from
+  qtutils.qt import QtCore, QtGui, QtWidgets` instead of specifying `PySide6` or
+  `PyQt5`/`PyQt6`, and have your code use whichever `Qt` library is available, with some
+  convenience aliases to make it easier to write code that works with the different
+  libraries. Note that this is not a comprehensive abstraction layer like
+  [QtPy](https://pypi.org/project/QtPy/) and your code will still need to be written in
+  a way generally compatible with the libraries you want to support. `qtutils` does
+  provide aliases for short enums in `PyQt6`, however, which is one of the most
+  singificant differences between `PyQt6` and `PySide6`/`PyQt5`. `qtutils.qt` will
+  choose which Qt library to use based on a) if the `QT_ENV` environment variable is set
+  to `PyQt5`, `PySide6`, or `PyQt6`, otherwise whichever library has already been
+  imported, or if none, whichever is installed, with order of priority `PyQt5`,
+  `PySide6`, then `PyQt6`.
 
 * `outputbox`: a `QTextEdit` widget for displaying log/output text of an application,
   either by calling methods or by sending data to it over `zeromq`.

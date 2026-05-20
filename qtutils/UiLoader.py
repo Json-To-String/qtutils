@@ -34,7 +34,7 @@ if qtutils.qt.QT_ENV in [qtutils.qt.PYSIDE6]:
     # QApplication to have any effect - otherwise only a warning is printed. On the
     # other hand, We can't actually load UI files until after instantiating a
     # QApplication. Therefore we set this now, before instantiating a QApplication.
-    QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
 
     class UiLoader(QUiLoader):
         """
@@ -83,9 +83,14 @@ if qtutils.qt.QT_ENV in [qtutils.qt.PYSIDE6]:
             self.toplevel_instance = toplevel_instance
             return super().load(uifile)
 
-else:
+elif qtutils.qt.QT_ENV in [qtutils.qt.PYQT5, qtutils.qt.PYQT6]:
     from types import ModuleType
-    from PyQt5 import uic
+    
+    if qtutils.qt.QT_ENV == qtutils.qt.PYQT5:
+        from PyQt5 import uic
+    else:
+        from PyQt6 import uic
+
 
     class UiLoader(object):
         def __init__(self):
@@ -103,6 +108,8 @@ else:
         def load(self, *args, **kwargs):
             return uic.loadUi(*args, **kwargs)
 
+else:
+    raise ValueError(qtutils.qt.QT_ENV)
 
 if __name__ == "__main__":
     loader = UiLoader()

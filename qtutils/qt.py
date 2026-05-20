@@ -17,48 +17,106 @@
 #####################################################################
 
 import sys
+import os
+import enum
+import importlib
 
 PYSIDE6 = 'PySide6'
 PYQT5 = 'PyQt5'
-QT_ENV = None
+PYQT6 = 'PyQt6'
 
-libs = [PYQT5, PYSIDE6]
-for lib in libs:
-    if lib in sys.modules:
-        QT_ENV = lib
-        break
-else:
-    for lib in libs:
+PYQT_LIBS = [PYQT5, PYQT6]
+PYSIDE_LIBS = [PYSIDE6]
+QT5_LIBS = [PYQT5]
+QT6_LIBS = [PYQT6, PYSIDE6]
+
+QT_LIBS = [PYQT5, PYSIDE6, PYQT6]
+
+
+def _choose_qt_lib():
+    # Check environment variable first:
+    lib = os.getenv('QT_ENV')
+    if lib is not None:
+        if lib not in QT_LIBS:
+            msg = f"Enviroment variable QT_ENV={lib} must be one of {','.join(QT_LIBS)}"
+            raise EnvironmentError(msg)
+        return lib
+
+    # Check if a Qt library has already been imported:
+    for lib in QT_LIBS:
+        if f"{lib}.QtCore" in sys.modules:
+            return lib
+
+    # Choose any that is importable, in order defined in QT_LIBS:
+    for lib in QT_LIBS:
         try:
-            __import__(lib)
-            QT_ENV = lib
-            break
+            importlib.import_module(f"{lib}.QtCore")
+            return lib
         except ImportError:
-            pass
+            continue
 
-if QT_ENV is None:
-    raise Exception("No Qt Enviroment was detected!")
+    raise EnvironmentError(f"No Qt library (of {','.join(QT_LIBS)}) found")
 
-if QT_ENV == PYQT5:
-    from PyQt5 import QtGui, QtCore, QtWidgets
-elif QT_ENV == PYSIDE6:
-    from PySide6 import QtGui, QtCore, QtWidgets
 
+QT_ENV = _choose_qt_lib()
+
+QtCore = importlib.import_module(f"{QT_ENV}.QtCore")
+QtGui = importlib.import_module(f"{QT_ENV}.QtGui")
+QtWidgets = importlib.import_module(f"{QT_ENV}.QtWidgets")
+
+sys.modules['qtutils.qt.QtCore'] = QtCore
 sys.modules['qtutils.qt.QtGui'] = QtGui
 sys.modules['qtutils.qt.QtWidgets'] = QtWidgets
-sys.modules['qtutils.qt.QtCore'] = QtCore
+
 
 # Make Signal available under both names 'Signal' and 'pyqtSignal':
-if QT_ENV ==  PYQT5:
+if QT_ENV in PYQT_LIBS:
     QtCore.Signal = QtCore.pyqtSignal
-else:
+elif QT_ENV in PYSIDE_LIBS:
     QtCore.pyqtSignal = QtCore.Signal
+else:
+    raise NotImplementedError(QT_ENV)
 
-# Make some names that moved from QtWidgets to QtGui available in both modules:
-if QT_ENV ==  PYQT5:
+# Make some names that moved from QtWidgets in Qt5 to QtGui in Qt6 available in both
+# modules:
+if QT_ENV in QT5_LIBS:
     QtGui.QAction = QtWidgets.QAction
     QtGui.QShortcut = QtWidgets.QShortcut
-else:
+elif QT_ENV in QT6_LIBS:
     QtWidgets.QAction = QtGui.QAction
     QtWidgets.QDesktopWidget = QtGui.QScreen
     QtWidgets.QShortcut = QtGui.QShortcut
+else:
+    raise NotImplementedError(QT_ENV)
+
+def _add_enum_aliases():
+    # For all classes defined in the three modules, look for enum attributes of those
+    # classes, and add aliases for all the enums' members directly to the class:
+    for module in (QtCore, QtGui, QtWidgets):
+        for cls_name in dir(module):
+            cls = getattr(module, cls_name)
+            if not isinstance(cls, type):
+                continue
+            for enum_name in dir(cls):
+                enum_cls = getattr(cls, enum_name, None)
+                if not (isinstance(enum_cls, type) and issubclass(enum_cls, enum.Enum)):
+                    continue
+                for member_name, member in enum_cls.__members__.items():
+                    if not hasattr(cls, member_name):
+                        setattr(cls, member_name, member)
+
+
+if QT_ENV == PYQT6:
+    # Add shims for short enum names in PyQt6 as supported in PyQt5 and PySide6:
+    _add_enum_aliases()
+    
+
+# Add aliases for exec() and exec_(). The former doesn't exist in older PyQt5 versions
+# (which needed to retain Python 2 compatibility), and the latter was removed in PyQt6.
+# Both are present in PySide6.
+if not hasattr(QtCore.QCoreApplication, 'exec'):
+    QtCore.QCoreApplication.exec = QtCore.QCoreApplication.exec_
+    QtWidgets.QDialog.exec = QtWidgets.QDialog.exec_
+elif not hasattr(QtCore.QCoreApplication, 'exec_'):
+    QtCore.QCoreApplication.exec_ = QtCore.QCoreApplication.exec
+    QtWidgets.QDialog.exec_ = QtWidgets.QDialog.exec
